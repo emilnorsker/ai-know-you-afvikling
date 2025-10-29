@@ -85,7 +85,9 @@
           powerKey = "ignore";
           suspendKey = "ignore";
           hibernateKey = "ignore";
-          idleAction = "ignore";
+          extraConfig = ''
+            IdleAction=ignore
+          '';
         };
         
         # Console autologin for the kiosk user
