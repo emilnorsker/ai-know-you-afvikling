@@ -30,12 +30,12 @@
         trap "${pkgs.coreutils}/bin/rm -rf \"$_OBS_TMP\"" EXIT INT TERM
         ${pkgs.coreutils}/bin/mkdir -p "$_OBS_TMP/obs-studio/basic/scenes"
         ${pkgs.coreutils}/bin/mkdir -p "$_OBS_TMP/obs-studio/basic/profiles/Untitled"
-        ${pkgs.coreutils}/bin/cp ${obsSceneFile} "$_OBS_TMP/obs-studio/basic/scenes/ai-know-you-obs.json"
+        ${pkgs.coreutils}/bin/cp ${obsSceneFile} "$_OBS_TMP/obs-studio/basic/scenes/ai-know-you.json"
         ${pkgs.coreutils}/bin/cp ${obsProfileIni} "$_OBS_TMP/obs-studio/basic/profiles/Untitled/basic.ini"
         exec ${obsWithPlugins}/bin/obs \
           --startvirtualcam \
           --profile "Untitled" \
-          --collection "Untitled" \
+          --collection "ai-know-you" \
           --scene "Display" \
           --disable-shutdown-check \
           --always-on-top \
@@ -107,6 +107,8 @@
             XDG_DATA_HOME = "/home/obs/.local/share";
             XDG_CACHE_HOME = "/home/obs/.cache";
             XDG_STATE_HOME = "/home/obs/.local/state";
+            # Provide Wayland runtime dir even without a user session manager
+            XDG_RUNTIME_DIR = "/run/user/%U";
           };
         };
         # Ensure Cage (tty1) starts after tmpfiles and network, avoiding switch-time races
