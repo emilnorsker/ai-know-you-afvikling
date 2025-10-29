@@ -19,6 +19,10 @@
       obsWithPlugins = pkgs.wrapOBS {
         plugins = with pkgs.obs-studio-plugins; [ obs-ndi ];
       };
+      # Minimal Firefox wrapper for Cage
+      firefoxKiosk = pkgs.writeShellScriptBin "firefox-kiosk" ''
+        exec ${pkgs.firefox}/bin/firefox --kiosk about:blank "$@"
+      '';
       obs-ndi-pkg = pkgs.writeShellScriptBin "obs-ndi" ''
         export NDI_IP=127.0.0.1
         # Use an ephemeral config/data/cache so OBS changes never persist
@@ -73,11 +77,11 @@
           };
         };
         
-        # Enable X11 with GDM and GNOME desktop (in addition to cage kiosk if enabled)
+        # Enable X11 with GDM and GNOME desktop (disabled for Cage test)
         services.xserver = {
-          enable = true;
-          displayManager.gdm.enable = true;
-          desktopManager.gnome.enable = true;
+          enable = false;
+          displayManager.gdm.enable = false;
+          desktopManager.gnome.enable = false;
         };
        
         # Prevent any sleep/hibernate/auto-shutdown behavior on a kiosk
@@ -103,9 +107,8 @@
         };
         
 
-        # GDM autologin workaround
-        services.displayManager.autoLogin.enable = true;
-        services.displayManager.autoLogin.user = "obs";
+        # Disable GDM autologin while testing Cage
+        services.displayManager.autoLogin.enable = false;
         
         # Disable TTY getty/autovt to avoid conflict with GDM autologin on tty1
         systemd.services."getty@tty1".enable = false;
@@ -115,7 +118,7 @@
         services.cage = {
           enable = true;
           user = "obs";
-          program = "${pkgs.firefox}/bin/firefox --kiosk about:blank";
+          program = "${firefoxKiosk}/bin/firefox-kiosk";
           environment = {
             HOME = "/home/obs";
             XDG_CONFIG_HOME = "/home/obs/.config";
@@ -129,7 +132,7 @@
         };
 
         
-        environment.systemPackages = [ obs-ndi-pkg ];
+        environment.systemPackages = [ obs-ndi-pkg pkgs.git pkgs.neovim ];
         system.stateVersion = "25.05";
       };
     in
