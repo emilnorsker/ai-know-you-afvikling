@@ -12,9 +12,29 @@
         inherit system;
         config.allowUnfree = true;
       };
+      # OBS scene collection and profile contents from repo
+      obsSceneFile = pkgs.writeText "ai-know-you-obs.json" (builtins.readFile ./ai-know-you-obs.json);
+      obsProfileIni = pkgs.writeText "basic.ini" (builtins.readFile ./basic.ini);
       obs-ndi-pkg = pkgs.writeShellScriptBin "obs-ndi" ''
         export NDI_IP=127.0.0.1
-        exec ${pkgs.wrapOBS { plugins = with pkgs.obs-studio-plugins; [ obs-ndi ]; }}/bin/obs --start-virtual-cam "$@"
+        # Use an ephemeral config/data/cache so OBS changes never persist
+        _TMP_ROOT="${XDG_RUNTIME_DIR:-/tmp}"
+        _OBS_TMP="$(mktemp -d "$_TMP_ROOT/obs-conf-XXXXXX")"
+        export XDG_CONFIG_HOME="$_OBS_TMP"
+        export XDG_DATA_HOME="$_OBS_TMP"
+        export XDG_CACHE_HOME="$_OBS_TMP"
+        export XDG_STATE_HOME="$_OBS_TMP"
+        trap 'rm -rf "$_OBS_TMP"' EXIT INT TERM
+        mkdir -p "$_OBS_TMP/obs-studio/basic/scenes"
+        mkdir -p "$_OBS_TMP/obs-studio/basic/profiles/Untitled"
+        cp ${obsSceneFile} "$_OBS_TMP/obs-studio/basic/scenes/ai-know-you-obs.json"
+        cp ${obsProfileIni} "$_OBS_TMP/obs-studio/basic/profiles/Untitled/basic.ini"
+        exec ${pkgs.wrapOBS { plugins = with pkgs.obs-studio-plugins; [ obs-ndi ]; }}/bin/obs \
+          --startvirtualcam \
+          --profile "Untitled" \
+          --collection "Untitled" \
+          --scene "Display" \
+          "$@"
       '';
       
       # Shared kiosk configuration
@@ -28,6 +48,7 @@
         users.mutableUsers = true;
         users.users.obs = {
           isNormalUser = true;
+          createHome = true;
           extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" ];
         };
         
@@ -44,6 +65,29 @@
           };
         };
         
+        # Prevent any sleep/hibernate/auto-shutdown behavior on a kiosk
+        systemd.sleep.extraConfig = ''
+          AllowSuspend=no
+          AllowHibernation=no
+          AllowSuspendThenHibernate=no
+          AllowHybridSleep=no
+        '';
+        # Mask sleep targets to be extra safe
+        systemd.targets.sleep.enable = false;
+        systemd.targets.suspend.enable = false;
+        systemd.targets.hibernate.enable = false;
+        systemd.targets.hybrid-sleep.enable = false;
+        # Explicit logind keys (canonical options)
+        services.logind = {
+          lidSwitch = "ignore";
+          lidSwitchDocked = "ignore";
+          lidSwitchExternalPower = "ignore";
+          powerKey = "ignore";
+          suspendKey = "ignore";
+          hibernateKey = "ignore";
+          idleAction = "ignore";
+        };
+        
         # Console autologin for the kiosk user
         services.getty.autologinUser = "obs";
         
@@ -55,6 +99,11 @@
           environment = {
             WLR_LIBINPUT_NO_DEVICES = "1";
           };
+        };
+        # Ensure Cage starts after tmpfiles and network, avoiding switch-time races
+        systemd.services.cage = {
+          after = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
+          wants = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
         };
         
         environment.systemPackages = [ obs-ndi-pkg ];
@@ -102,7 +151,6 @@
             }
           ];
         };
-
         # Real hardware configuration
         kiosk = nixpkgs.lib.nixosSystem {
           inherit system;
@@ -118,7 +166,7 @@
 
     };
 }
-    # needs to be set in configuration.nix:
+    # Examples if configuring outside this flake/module:
     # 
     # services.avahi = {
     #   enable = true;
@@ -135,7 +183,7 @@
     # # Optional: Create dedicated user for OBS service
     # users.users.obs = {
     #   isNormalUser = true;
-    #   extraGroups = [ "audio" "video" "render" ];
+    #   extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" ];
     # };
     # 
     # # Example of how to define systemd services directly in configuration.nix:
@@ -150,11 +198,12 @@
     #   };
     # };
 
-    # gnome autologin
-    # services.xserver = {
-    #   displayManager.gdm.enable = true;
-    #   desktopManager.gnome.enable = true;
-    # }
+    # GNOME with GDM + autologin (alternative to cage):
+    # services.xserver.enable = true;
+    # services.xserver.displayManager.gdm.enable = true;
+    # services.xserver.desktopManager.gnome.enable = true;
+    # services.displayManager.autoLogin.enable = true;
+    # services.displayManager.autoLogin.user = "obs";
 
     # and then follow this for just login
     # https://help.gnome.org/admin/system-admin-guide/stable/login-automatic.html.en
