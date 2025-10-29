@@ -16,6 +16,54 @@
         export NDI_IP=127.0.0.1
         exec ${pkgs.wrapOBS { plugins = with pkgs.obs-studio-plugins; [ obs-ndi ]; }}/bin/obs --start-virtual-cam "$@"
       '';
+      
+      # Shared kiosk configuration
+      kioskConfig = {
+        # Basic system configuration
+        boot.loader.systemd-boot.enable = true;
+        
+        # Disable firewall (required by ndi - not really but there are so many ports to map so its a hack)
+        networking.firewall.enable = false;
+        
+        # WiFi configuration
+        networking.wireless.enable = true;
+        networking.wireless.networks."AI_Know_You".psk = "FixOT2025";
+        
+        # User configuration
+        users.users.obs = {
+          isNormalUser = true;
+          extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" ];
+        };
+        
+        # Avahi service for mDNS/DNS-SD
+        services.avahi = {
+          enable = true;
+          nssmdns = true;
+          openFirewall = true;
+          publish = {
+            enable = true;
+            userServices = true;
+            addresses = true;
+            workstation = true;
+          };
+        };
+        
+        # Enable cage service for kiosk mode
+        services.cage = {
+          enable = true;
+          user = "obs";
+          program = "${obs-ndi-pkg}/bin/obs-ndi --disable-shutdown-check --always-on-top";
+          environment = {
+            WLR_LIBINPUT_NO_DEVICES = "1";
+          };
+        };
+        
+        # Basic system packages
+        environment.systemPackages = [ obs-ndi-pkg ];
+        
+        # System version
+        system.stateVersion = "25.05";
+      };
     in
     {
       devShells.${system}.default = pkgs.mkShell {
@@ -43,14 +91,9 @@
         kiosk-vm = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
+            kioskConfig
             {
-              # Basic system configuration
-              boot.loader.systemd-boot.enable = true;
               networking.hostName = "kiosk-vm";
-              
-              # WiFi configuration
-              networking.wireless.enable = true;
-              networking.wireless.networks."AI_Know_You".psk = "FixOT2025";
               
               # VM configuration
               virtualisation.vmVariant = {
@@ -60,41 +103,6 @@
                   graphics = true;
                 };
               };
-              
-              # User configuration
-              users.users.obs = {
-                isNormalUser = true;
-                extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" ];
-              };
-              
-              # Avahi service for mDNS/DNS-SD
-              services.avahi = {
-                enable = true;
-                nssmdns4 = true;
-                openFirewall = true;
-                publish = {
-                  enable = true;
-                  userServices = true;
-                  addresses = true;
-                  workstation = true;
-                };
-              };
-              
-              # Enable cage service for kiosk mode
-              services.cage = {
-                enable = true;
-                user = "obs";
-                program = "${obs-ndi-pkg}/bin/obs-ndi --disable-shutdown-check --always-on-top";
-                environment = {
-                  WLR_LIBINPUT_NO_DEVICES = "1";
-                };
-              };
-              
-              # Basic system packages
-              environment.systemPackages = [ obs-ndi-pkg ];
-              
-              # System version
-              system.stateVersion = "25.05";
             }
           ];
         };
@@ -104,49 +112,9 @@
           inherit system;
           modules = [
             ./hardware-configuration.nix
+            kioskConfig
             {
-              # Basic system configuration
-              boot.loader.systemd-boot.enable = true;
               networking.hostName = "kiosk";
-              
-              # WiFi configuration
-              networking.wireless.enable = true;
-              networking.wireless.networks."AI_Know_You".psk = "FixOT2025";
-              
-              # User configuration
-              users.users.obs = {
-                isNormalUser = true;
-                extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" ];
-              };
-              
-              # Avahi service for mDNS/DNS-SD
-              services.avahi = {
-                enable = true;
-                nssmdns4 = true;
-                openFirewall = true;
-                publish = {
-                  enable = true;
-                  userServices = true;
-                  addresses = true;
-                  workstation = true;
-                };
-              };
-              
-              # Enable cage service for kiosk mode
-              services.cage = {
-                enable = true;
-                user = "obs";
-                program = "${obs-ndi-pkg}/bin/obs-ndi --disable-shutdown-check --always-on-top";
-                environment = {
-                  WLR_LIBINPUT_NO_DEVICES = "1";
-                };
-              };
-              
-              # Basic system packages
-              environment.systemPackages = [ obs-ndi-pkg ];
-              
-              # System version
-              system.stateVersion = "25.05";
             }
           ];
         };
