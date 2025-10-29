@@ -49,12 +49,15 @@
         # Disable firewall (required by ndi - not really but there are so many ports to map so its a hack)
         networking.firewall.enable = false;
         
+        # Allow unfree packages at the system level
+        nixpkgs.config.allowUnfree = true;
+        
         # User configuration
         users.mutableUsers = true;
         users.users.obs = {
           isNormalUser = true;
           createHome = true;
-          extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" ];
+          extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" "input" ];
         };
         
         # Avahi service for mDNS/DNS-SD
@@ -68,6 +71,13 @@
             addresses = true;
             workstation = true;
           };
+        };
+        
+        # Enable X11 with GDM and GNOME desktop (in addition to cage kiosk if enabled)
+        services.xserver = {
+          enable = true;
+          displayManager.gdm.enable = true;
+          desktopManager.gnome.enable = true;
         };
         
         # Prevent any sleep/hibernate/auto-shutdown behavior on a kiosk
@@ -107,14 +117,18 @@
             XDG_DATA_HOME = "/home/obs/.local/share";
             XDG_CACHE_HOME = "/home/obs/.cache";
             XDG_STATE_HOME = "/home/obs/.local/state";
-            # Provide Wayland runtime dir even without a user session manager
-            XDG_RUNTIME_DIR = "/run/user/%U";
+            # Provide Wayland runtime dir (created by RuntimeDirectory below)
+            XDG_RUNTIME_DIR = "/run/obs-runtime";
           };
         };
         # Ensure Cage (tty1) starts after tmpfiles and network, avoiding switch-time races
         systemd.services."cage-tty1" = {
           after = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
           wants = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
+          serviceConfig = {
+            RuntimeDirectory = "obs-runtime";
+            RuntimeDirectoryMode = "0700";
+          };
         };
         
         environment.systemPackages = [ obs-ndi-pkg ];
