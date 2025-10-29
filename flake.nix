@@ -15,21 +15,24 @@
       # OBS scene collection and profile contents from repo
       obsSceneFile = pkgs.writeText "ai-know-you-obs.json" (builtins.readFile ./ai-know-you-obs.json);
       obsProfileIni = pkgs.writeText "basic.ini" (builtins.readFile ./basic.ini);
+      # Precompute wrapped OBS with plugins (use signature supported by this nixpkgs)
+      obsWithPlugins = pkgs.wrapOBS {
+        plugins = with pkgs.obs-studio-plugins; [ obs-ndi ];
+      };
       obs-ndi-pkg = pkgs.writeShellScriptBin "obs-ndi" ''
         export NDI_IP=127.0.0.1
         # Use an ephemeral config/data/cache so OBS changes never persist
-        _TMP_ROOT="${XDG_RUNTIME_DIR:-/tmp}"
-        _OBS_TMP="$(mktemp -d "$_TMP_ROOT/obs-conf-XXXXXX")"
+        _OBS_TMP="$(${pkgs.coreutils}/bin/mktemp -d -t obs-conf-XXXXXX)"
         export XDG_CONFIG_HOME="$_OBS_TMP"
         export XDG_DATA_HOME="$_OBS_TMP"
         export XDG_CACHE_HOME="$_OBS_TMP"
         export XDG_STATE_HOME="$_OBS_TMP"
-        trap 'rm -rf "$_OBS_TMP"' EXIT INT TERM
-        mkdir -p "$_OBS_TMP/obs-studio/basic/scenes"
-        mkdir -p "$_OBS_TMP/obs-studio/basic/profiles/Untitled"
-        cp ${obsSceneFile} "$_OBS_TMP/obs-studio/basic/scenes/ai-know-you-obs.json"
-        cp ${obsProfileIni} "$_OBS_TMP/obs-studio/basic/profiles/Untitled/basic.ini"
-        exec ${pkgs.wrapOBS { plugins = with pkgs.obs-studio-plugins; [ obs-ndi ]; }}/bin/obs \
+        trap "${pkgs.coreutils}/bin/rm -rf \"$_OBS_TMP\"" EXIT INT TERM
+        ${pkgs.coreutils}/bin/mkdir -p "$_OBS_TMP/obs-studio/basic/scenes"
+        ${pkgs.coreutils}/bin/mkdir -p "$_OBS_TMP/obs-studio/basic/profiles/Untitled"
+        ${pkgs.coreutils}/bin/cp ${obsSceneFile} "$_OBS_TMP/obs-studio/basic/scenes/ai-know-you-obs.json"
+        ${pkgs.coreutils}/bin/cp ${obsProfileIni} "$_OBS_TMP/obs-studio/basic/profiles/Untitled/basic.ini"
+        exec ${obsWithPlugins}/bin/obs \
           --startvirtualcam \
           --profile "Untitled" \
           --collection "Untitled" \
@@ -99,10 +102,15 @@
           program = "${obs-ndi-pkg}/bin/obs-ndi";
           environment = {
             WLR_LIBINPUT_NO_DEVICES = "1";
+            HOME = "/home/obs";
+            XDG_CONFIG_HOME = "/home/obs/.config";
+            XDG_DATA_HOME = "/home/obs/.local/share";
+            XDG_CACHE_HOME = "/home/obs/.cache";
+            XDG_STATE_HOME = "/home/obs/.local/state";
           };
         };
-        # Ensure Cage starts after tmpfiles and network, avoiding switch-time races
-        systemd.services.cage = {
+        # Ensure Cage (tty1) starts after tmpfiles and network, avoiding switch-time races
+        systemd.services."cage-tty1" = {
           after = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
           wants = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
         };
