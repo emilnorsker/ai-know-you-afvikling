@@ -79,7 +79,7 @@
           displayManager.gdm.enable = true;
           desktopManager.gnome.enable = true;
         };
-        
+       
         # Prevent any sleep/hibernate/auto-shutdown behavior on a kiosk
         systemd.sleep.extraConfig = ''
           AllowSuspend=no
@@ -102,8 +102,14 @@
           hibernateKey = "ignore";
         };
         
-        # Console autologin for the kiosk user
-        services.getty.autologinUser = "obs";
+
+        # GDM autologin workaround
+        services.displayManager.autoLogin.enable = true;
+        services.displayManager.autoLogin.user = "obs";
+        
+        # Disable TTY getty/autovt to avoid conflict with GDM autologin on tty1
+        systemd.services."getty@tty1".enable = false;
+        systemd.services."autovt@tty1".enable = false;
         
         # Enable cage service for kiosk mode
         services.cage = {
