@@ -488,7 +488,7 @@
             "versioned_id": "ndi_source",
             "settings": {
                 "ndi_fix_alpha_blending": false,
-                "ndi_source_name": "NIXOS (ai-survey)"
+                "ndi_source_name": "ARTIFICIALMIND (ai-survey)"
             },
             "mixers": 255,
             "sync": 0,
@@ -520,7 +520,7 @@
             "versioned_id": "ndi_source",
             "settings": {
                 "ndi_fix_alpha_blending": false,
-                "ndi_source_name": "NIXOS (ai-counter)"
+                "ndi_source_name": "ARTIFICIALMIND (ai-counter)"
             },
             "mixers": 255,
             "sync": 0,

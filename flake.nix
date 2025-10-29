@@ -19,10 +19,17 @@
       obsWithPlugins = pkgs.wrapOBS {
         plugins = with pkgs.obs-studio-plugins; [ obs-ndi ];
       };
-      # Minimal Firefox wrapper for Cage
-      firefoxKiosk = pkgs.writeShellScriptBin "firefox-kiosk" ''
-        exec ${pkgs.firefox}/bin/firefox --kiosk about:blank "$@"
-      '';
+      # Desktop launcher for our OBS wrapper
+      obsNdiDesktop = pkgs.makeDesktopItem {
+        name = "ai-know-you-obs";
+        desktopName = "AI Know You (OBS)";
+        genericName = "OBS Studio";
+        exec = "${obs-ndi-pkg}/bin/obs-ndi";
+        icon = "obs";
+        comment = "Launch AI Know You OBS kiosk";
+        categories = [ "AudioVideo" "Video" ];
+        terminal = false;
+      };
       obs-ndi-pkg = pkgs.writeShellScriptBin "obs-ndi" ''
         export NDI_IP=127.0.0.1
         # Use an ephemeral config/data/cache so OBS changes never persist
@@ -55,6 +62,8 @@
         
         # Allow unfree packages at the system level
         nixpkgs.config.allowUnfree = true;
+        # Enable flakes and nix-command
+        nix.settings.experimental-features = [ "nix-command" "flakes" ];
         
         # User configuration
         users.mutableUsers = true;
@@ -67,7 +76,7 @@
         # Avahi service for mDNS/DNS-SD
         services.avahi = {
           enable = true;
-          nssmdns4 = true;
+          nssmdns = true;
           openFirewall = true;
           publish = {
             enable = true;
@@ -77,11 +86,11 @@
           };
         };
         
-        # Enable X11 with GDM and GNOME desktop (disabled for Cage test)
+        # Enable X11 with GDM and GNOME desktop
         services.xserver = {
-          enable = false;
-          displayManager.gdm.enable = false;
-          desktopManager.gnome.enable = false;
+          enable = true;
+          displayManager.gdm.enable = true;
+          desktopManager.gnome.enable = true;
         };
        
         # Prevent any sleep/hibernate/auto-shutdown behavior on a kiosk
@@ -107,32 +116,17 @@
         };
         
 
-        # Disable GDM autologin while testing Cage
-        services.displayManager.autoLogin.enable = false;
+        # GDM autologin for obs
+        services.displayManager.autoLogin.enable = true;
+        services.displayManager.autoLogin.user = "obs";
         
-        # Disable TTY getty/autovt to avoid conflict with GDM autologin on tty1
         systemd.services."getty@tty1".enable = false;
         systemd.services."autovt@tty1".enable = false;
         
-        # Enable cage service for kiosk mode
-        services.cage = {
-          enable = true;
-          user = "obs";
-          program = "${firefoxKiosk}/bin/firefox-kiosk";
-          environment = {
-            HOME = "/home/obs";
-            XDG_CONFIG_HOME = "/home/obs/.config";
-            XDG_DATA_HOME = "/home/obs/.local/share";
-            XDG_CACHE_HOME = "/home/obs/.cache";
-            XDG_STATE_HOME = "/home/obs/.local/state";
-            # Provide Wayland runtime dir (created by RuntimeDirectory below)
-            XDG_RUNTIME_DIR = "/run/obs-runtime";
-            MOZ_ENABLE_WAYLAND = "1";
-          };
-        };
+        # Cage removed; start OBS manually via the launcher
 
         
-        environment.systemPackages = [ obs-ndi-pkg pkgs.git pkgs.neovim ];
+        environment.systemPackages = [ obs-ndi-pkg obsNdiDesktop pkgs.git pkgs.neovim ];
         system.stateVersion = "25.05";
       };
     in
@@ -184,7 +178,7 @@
             ./hardware-configuration.nix
             kioskConfig
             {
-              networking.hostName = "kiosk";
+              networking.hostName = "artificialmind";
             }
           ];
         };
