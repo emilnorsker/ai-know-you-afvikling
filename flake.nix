@@ -63,7 +63,7 @@
         # Avahi service for mDNS/DNS-SD
         services.avahi = {
           enable = true;
-          nssmdns = true;
+          nssmdns4 = true;
           openFirewall = true;
           publish = {
             enable = true;
@@ -115,9 +115,8 @@
         services.cage = {
           enable = true;
           user = "obs";
-          program = "${obs-ndi-pkg}/bin/obs-ndi";
+          program = "${pkgs.firefox}/bin/firefox --kiosk about:blank";
           environment = {
-            WLR_LIBINPUT_NO_DEVICES = "1";
             HOME = "/home/obs";
             XDG_CONFIG_HOME = "/home/obs/.config";
             XDG_DATA_HOME = "/home/obs/.local/share";
@@ -125,17 +124,10 @@
             XDG_STATE_HOME = "/home/obs/.local/state";
             # Provide Wayland runtime dir (created by RuntimeDirectory below)
             XDG_RUNTIME_DIR = "/run/obs-runtime";
+            MOZ_ENABLE_WAYLAND = "1";
           };
         };
-        # Ensure Cage (tty1) starts after tmpfiles and network, avoiding switch-time races
-        systemd.services."cage-tty1" = {
-          after = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
-          wants = [ "systemd-tmpfiles-setup.service" "network-online.target" ];
-          serviceConfig = {
-            RuntimeDirectory = "obs-runtime";
-            RuntimeDirectoryMode = "0700";
-          };
-        };
+
         
         environment.systemPackages = [ obs-ndi-pkg ];
         system.stateVersion = "25.05";
