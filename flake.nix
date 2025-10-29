@@ -126,6 +126,26 @@
         # Cage removed; start OBS manually via the launcher
 
         
+        # Ensure an OBS launcher icon appears on the user's Desktop
+        systemd.user.services."ai-obs-desktop-icon" = {
+          description = "Place AI Know You OBS launcher on Desktop";
+          wantedBy = [ "default.target" ];
+          partOf = [ "default.target" ];
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = ''
+              ${pkgs.bash}/bin/bash -ceu '
+                desktop="$HOME/Desktop/AI Know You (OBS).desktop"
+                ${pkgs.coreutils}/bin/mkdir -p "$HOME/Desktop"
+                if [ ! -f "$desktop" ]; then
+                  ${pkgs.coreutils}/bin/cp -f ${obsNdiDesktop}/share/applications/ai-know-you-obs.desktop "$desktop"
+                  ${pkgs.coreutils}/bin/chmod +x "$desktop"
+                fi
+              '
+            '';
+          };
+        };
+
         environment.systemPackages = [ obs-ndi-pkg obsNdiDesktop pkgs.git pkgs.neovim ];
         system.stateVersion = "25.05";
       };
