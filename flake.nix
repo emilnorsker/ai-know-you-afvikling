@@ -19,17 +19,13 @@
       
       # Shared kiosk configuration
       kioskConfig = {
-        # Basic system configuration
         boot.loader.systemd-boot.enable = true;
         
         # Disable firewall (required by ndi - not really but there are so many ports to map so its a hack)
         networking.firewall.enable = false;
         
-        # WiFi configuration
-        networking.wireless.enable = true;
-        networking.wireless.networks."AI_Know_You".psk = "FixOT2025";
-        
         # User configuration
+        users.mutableUsers = true;
         users.users.obs = {
           isNormalUser = true;
           extraGroups = [ "wheel" "networkmanager" "video" "audio" "render" ];
@@ -48,6 +44,9 @@
           };
         };
         
+        # Console autologin for the kiosk user
+        services.getty.autologinUser = "obs";
+        
         # Enable cage service for kiosk mode
         services.cage = {
           enable = true;
@@ -58,10 +57,7 @@
           };
         };
         
-        # Basic system packages
         environment.systemPackages = [ obs-ndi-pkg ];
-        
-        # System version
         system.stateVersion = "25.05";
       };
     in
