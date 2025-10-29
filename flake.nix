@@ -34,6 +34,8 @@
           --profile "Untitled" \
           --collection "Untitled" \
           --scene "Display" \
+          --disable-shutdown-check \
+          --always-on-top \
           "$@"
       '';
       
@@ -85,9 +87,6 @@
           powerKey = "ignore";
           suspendKey = "ignore";
           hibernateKey = "ignore";
-          extraConfig = ''
-            IdleAction=ignore
-          '';
         };
         
         # Console autologin for the kiosk user
@@ -97,7 +96,7 @@
         services.cage = {
           enable = true;
           user = "obs";
-          program = "${obs-ndi-pkg}/bin/obs-ndi --disable-shutdown-check --always-on-top";
+          program = "${obs-ndi-pkg}/bin/obs-ndi";
           environment = {
             WLR_LIBINPUT_NO_DEVICES = "1";
           };
